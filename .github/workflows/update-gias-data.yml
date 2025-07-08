@@ -62,7 +62,7 @@ jobs:
           az_keyvault_secret_name: ${{ env.az_keyvault_python_connection_string }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v6
 
       - name: Set up Python
         run: uv python install
