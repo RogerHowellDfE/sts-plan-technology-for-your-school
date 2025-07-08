@@ -94,7 +94,7 @@ jobs:
           az_keyvault_secret_name: ${{ env.az_keyvault_plantech_api_key_name }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v6
 
       - name: Set up Python
         working-directory: ./contentful/qa-visualiser
