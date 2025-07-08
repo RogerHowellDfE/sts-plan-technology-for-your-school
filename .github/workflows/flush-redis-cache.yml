@@ -30,7 +30,7 @@ jobs:
           az_client_secret: ${{ secrets.AZ_CLIENT_SECRET }}
 
       - name: Flush Redis Cache
-        uses: azure/CLI@v1
+        uses: azure/CLI@v2
         id: azure
         with:
           azcliversion: 2.73.0
