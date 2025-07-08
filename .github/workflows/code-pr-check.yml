@@ -164,7 +164,7 @@ jobs:
         run: npm test
 
       - name: Test report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         if: success() || failure() # run this step even if previous step failed
         with:
           name: JEST Tests # Name of the check run which will be created
@@ -209,7 +209,7 @@ jobs:
 
       - name: Test Report
         if: steps.contentful-check.outputs.changed == 'true' && (success() || failure())
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         with:
           name: Contentful Jest Tests
           path: ./contentful/junit.xml
