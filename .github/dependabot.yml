@@ -1,32 +1,70 @@
 version: 2
 updates:
 
+  # GitHub Actions dependencies (CI/CD workflows)
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
 
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "daily"
-
+  # Docker dependencies
   - package-ecosystem: "docker"
     directory: "/src/Dfe.PlanTech.Web/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 
-  - package-ecosystem: "terraform"
-    directory: "/"
-    schedule:
-      interval: "daily"
-
+  # .NET SDK (see also `global.json` for version pinning)
   - package-ecosystem: "dotnet-sdk"
     directory: "/"
     schedule:
+      interval: "weekly"
+
+  # C#/NuGet dependencies (Database upgrader project)
+  - package-ecosystem: "nuget"
+    directory: "/src/Dfe.PlanTech.DatabaseUpgrader/"
+    schedule:
       interval: "daily"
 
+  # C#/NuGet dependencies (All projects in the repository)
   - package-ecosystem: "nuget"
     directory: "/"
     schedule:
       interval: "daily"
+
+  # NPM dependencies (JavaScript/Node.js projects)
+  - package-ecosystem: "npm"
+    directory: "/contentful/"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "npm"
+    directory: "/contentful/content-management/"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "npm"
+    directory: "/contentful/content-migrations/"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "npm"
+    directory: "/export-processor/"
+    schedule:
+      interval: "daily"
+
+  # Python dependencies (QA Visualiser project)
+  - package-ecosystem: "pip"
+    directory: "/qa-visualiser/"
+    schedule:
+      interval: "daily"
+
+  # Terraform dependencies (Infrastructure as Code)
+  - package-ecosystem: "terraform"
+    directory: "/terraform/container-app/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "terraform"
+    directory: "/terraform/dns-zone/"
+    schedule:
+      interval: "weekly"
