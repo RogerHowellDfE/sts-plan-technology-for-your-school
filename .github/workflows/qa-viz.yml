@@ -26,6 +26,9 @@ env:
 
 jobs:
   generate_images:
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     name: Generate visualisations for ${{ inputs.environment }}
@@ -40,13 +43,19 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
       - name: Login with AZ
         uses: ./.github/actions/azure-login
         with:
           az_tenant_id: ${{ secrets.AZ_TENANT_ID }}
           az_subscription_id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           az_client_id: ${{ secrets.AZ_CLIENT_ID }}
-          az_client_secret: ${{ secrets.AZ_CLIENT_SECRET }}
 
       - name: Build web app
         uses: ./.github/actions/build-dotnet-app

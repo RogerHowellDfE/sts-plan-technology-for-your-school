@@ -10,6 +10,11 @@ on:
     paths:
       - "terraform/**"
 
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write                # Required to commit to branch with documentation changes
+
 concurrency:
   group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
   cancel-in-progress: true
@@ -20,7 +25,7 @@ env:
   ARM_TENANT_ID: ${{ secrets.AZ_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }}
   ARM_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }}
-  ARM_CLIENT_SECRET: ${{ secrets.AZ_CLIENT_SECRET }}
+  ARM_USE_OIDC: true
 
   AZ_KEYVAULT_NAME: ${{ secrets.AZ_ACA_RESOURCE_GROUP	}}-kv
   AZ_SA_COSTING_NAME: ${{ secrets.AZ_ACA_RESOURCE_GROUP }}costing
@@ -81,7 +86,6 @@ jobs:
           az_tenant_id: ${{ secrets.AZ_TENANT_ID }}
           az_subscription_id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           az_client_id: ${{ secrets.AZ_CLIENT_ID }}
-          az_client_secret: ${{ secrets.AZ_CLIENT_SECRET }}
 
       - name: Replace in secret environment variable
         run: |
@@ -89,15 +93,16 @@ jobs:
           SA_COSTING_NAME="${AZ_SA_COSTING_NAME//-/}"
           echo "SA_COSTING_NAME=$SA_COSTING_NAME" >> $GITHUB_ENV
 
-      - name: Add Runner to BlobForCost SA whitelist
-        shell: bash
-        run: |
-          az storage account network-rule add --account-name $SA_COSTING_NAME --ip-address ${{ steps.whats-my-ip.outputs.ip }} &> /dev/null 
-
-      - name: Add Runner to KV whitelist
-        shell: bash
-        run: |
-          az keyvault network-rule add --resource-group ${{ secrets.AZ_ACA_RESOURCE_GROUP	}} --name ${{ env.AZ_KEYVAULT_NAME }} --ip-address ${{ steps.whats-my-ip.outputs.ip }} &> /dev/null
+      - name: Whitelist Runner for Storage account, KeyVault, and TF KeyVault
+        uses: ./.github/actions/whitelisting-for-runner
+        with:
+          runner-ip: ${{ steps.whats-my-ip.outputs.ip }}
+          sa-costing-name: $SA_COSTING_NAME
+          az-keyvault-name: ${{ env.AZ_KEYVAULT_NAME }}
+          az-aca-resource-group: ${{ secrets.AZ_ACA_RESOURCE_GROUP }}
+          tf-backend-resource-group: ${{ secrets.TF_BACKEND_RESOURCE_GROUP }}
+          tf-secrets-keyvault-name: ${{ secrets.TF_SECRETS_KEYVAULT_NAME }}
+          removeRules: 'false'
 
       - name: Terraform init
         id: init
@@ -112,9 +117,21 @@ jobs:
         id: validate
         run: terraform validate -no-color -compact-warnings
 
-      - name: Terraform plan
+      - name: Get secret and clean tfvars file (PowerShell)
+        shell: pwsh
+        run: |
+          ./scripts-workflow/get-and-normalise-tfvars.ps1 `
+            -SecretName "${{ secrets.TF_SECRET_NAME }}" `
+            -KeyVaultName "${{ secrets.TF_SECRETS_KEYVAULT_NAME }}"
+
+      - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color
+        run: terraform plan -var-file="normalisedTerraformVars.tfvars" -var="workflow_runner_ip=$TF_VAR_github_ip" -no-color
+
+      - name: Delete generated files
+        shell: pwsh
+        run: |
+          ./scripts-workflow/remove-generated-files.ps1
 
       - name: Terraform fmt
         id: fmt
@@ -145,6 +162,16 @@ jobs:
           tf_working_directory: ${{ env.TF_WORKING_DIRECTORY }}
           github_workflow: ${{ github.workflow }}
 
+      - name: Whitelist Runner for Storage account, KeyVault, and TF KeyVault Remove
+        uses: ./.github/actions/whitelisting-for-runner
+        with:
+          runner-ip: ${{ steps.whats-my-ip.outputs.ip }}
+          sa-costing-name: $SA_COSTING_NAME
+          az-keyvault-name: ${{ env.AZ_KEYVAULT_NAME }}
+          az-aca-resource-group: ${{ secrets.AZ_ACA_RESOURCE_GROUP }}
+          tf-backend-resource-group: ${{ secrets.TF_BACKEND_RESOURCE_GROUP }}
+          tf-secrets-keyvault-name: ${{ secrets.TF_SECRETS_KEYVAULT_NAME }}
+          removeRules: 'true'
 
       - name: Remove Runner from BlobForCost SA whitelist
         shell: bash
@@ -155,6 +182,11 @@ jobs:
         shell: bash
         run: |
           az keyvault network-rule remove --resource-group ${{ secrets.AZ_ACA_RESOURCE_GROUP	}} --name ${{ env.AZ_KEYVAULT_NAME }} --ip-address ${{ steps.whats-my-ip.outputs.ip }} &> /dev/null
+
+      - name: Remove Runner from TF KV whitelist
+        shell: bash
+        run: |
+          az keyvault network-rule remove --resource-group ${{ secrets.TF_BACKEND_RESOURCE_GROUP	}} --name ${{ secrets.TF_SECRETS_KEYVAULT_NAME }} --ip-address ${{ steps.whats-my-ip.outputs.ip }} &> /dev/null
 
   terraform-lint:
     name: Terraform Lint

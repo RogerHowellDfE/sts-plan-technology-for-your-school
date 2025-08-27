@@ -20,6 +20,9 @@ env:
 
 jobs:
   clear-db:
+    permissions:
+      id-token: write
+      contents: read
     name: Clear database
     runs-on: ubuntu-latest
     env:
@@ -31,14 +34,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        
       - name: Login with AZ
         uses: ./.github/actions/azure-login
         with:
           az_tenant_id: ${{ secrets.AZ_TENANT_ID }}
           az_subscription_id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           az_client_id: ${{ secrets.AZ_CLIENT_ID }}
-          az_client_secret: ${{ secrets.AZ_CLIENT_SECRET }}
 
       - name: Get workflow IP address
         id: whats-my-ip
@@ -79,6 +81,9 @@ jobs:
           az_sql_database_server_name: ${{ env.az_sql_database_server_name }}
 
   run-tests:
+    permissions:
+      id-token: write
+      contents: read
     name: Run E2E Tests
     runs-on: ubuntu-22.04
     needs: [clear-db]
@@ -92,13 +97,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure CLI Login
+      - name: Login with AZ
         uses: ./.github/actions/azure-login
         with:
           az_tenant_id: ${{ secrets.AZ_TENANT_ID }}
           az_subscription_id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           az_client_id: ${{ secrets.AZ_CLIENT_ID }}
-          az_client_secret: ${{ secrets.AZ_CLIENT_SECRET }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -153,6 +157,8 @@ jobs:
 
       - name: Cypress tests
         uses: ./.github/actions/run-e2e-tests
+        env:
+          CYPRESS_baseUrl: https://localhost:8081
         with:
           url: https://localhost:8081
           dsi_url: ${{ secrets.DSI_URL }}
@@ -161,6 +167,8 @@ jobs:
           environment: "E2E"
           dsi_noorg_username: ${{ secrets.DSI_NOORG_USERNAME }}
           dsi_noorg_password: ${{ secrets.DSI_NOORG_PASSWORD }}
+          browser: chrome
+          headless: true
 
       - name: Remove Azure firewall rules
         if: always()
